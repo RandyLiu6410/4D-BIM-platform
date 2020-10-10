@@ -17,6 +17,7 @@ import TasksProgress from './TasksProgress';
 import TotalCustomers from './TotalCustomers';
 import TotalProfit from './TotalProfit';
 import TrafficByDevice from './TrafficByDevice';
+import ModelViewer from '../../modelviewer/index';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -67,7 +68,7 @@ const Dashboard = () => {
             xl={3}
             xs={12}
           >
-            <img style={{width:"80vw"}} src="/static/images/demo/forge.png"></img>
+            <ModelViewer />
           </Grid>
           <Grid
             item

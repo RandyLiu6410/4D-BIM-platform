@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -8,6 +8,7 @@ import Page from 'src/components/Page';
 import Results from './Results';
 import Toolbar from './Toolbar';
 import data from './data';
+var Axios = require('axios');
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -18,7 +19,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const CustomerListView = () => {
+const ProjectListView = () => {
   const classes = useStyles();
   const [projects] = useState(data);
 
@@ -37,4 +38,4 @@ const CustomerListView = () => {
   );
 };
 
-export default CustomerListView;
+export default ProjectListView;
