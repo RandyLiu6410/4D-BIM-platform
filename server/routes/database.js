@@ -21,14 +21,30 @@ firebase.initializeApp(firebaseConfig);
 
 const firestore = firebase.firestore();
 
+// Get all projects
 router.route('/').get(async (req, res) => {
-    const docRef = await firestore.collection('projects').get()
+    const docRef = await firestore.collection('projects').get();
 
-    docRef.forEach((doc) => {
-        console.log(doc.id, '=>', doc.data());
-      });
+    const getProjects = () => {
+        return new Promise((resolve, jeject) => {
+            var projects = [];
+
+            docRef.forEach((doc) => {
+                // console.log(doc.id, '=>', doc.data());
+                projects.push(doc.data())
+            });
+
+            resolve(projects)
+        })
+    }
+
+    getProjects()
+    .then(p => {
+        res.json(p);
+    })
 })
 
+// Add a project
 router.route('/').post(async (req, res) => {
     try {
         const value = await projectSchema.validateAsync(req.body);
@@ -54,6 +70,29 @@ router.route('/').post(async (req, res) => {
     }
 })
 
+router.route('/projectmodel/').get(async (req, res) => {
+    const docRef = await firestore.collection('projects').doc(req.query.projectid).collection('models').get();
+
+    const getModels = () => {
+        return new Promise((resolve, jeject) => {
+            var models = [];
+
+            docRef.forEach((doc) => {
+                // console.log(doc.id, '=>', doc.data());
+                models.push(doc.data())
+            });
+
+            resolve(models)
+        })
+    }
+
+    getModels()
+    .then(m => {
+        res.json(m);
+    })
+})
+
+// Add a model
 router.route('/projectmodel/').post(async (req, res) => {
     try {
         const value = await modelSchema.validateAsync(req.body);
