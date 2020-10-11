@@ -59,9 +59,9 @@ router.route('/projectmodel/').post(async (req, res) => {
         const value = await modelSchema.validateAsync(req.body);
 
         const modelid = uuid();
-        
+
         // Add model doc
-        await firestore.collection('projects').doc(req.query.projectid).collection('models').doc(modelid).set(value);
+        const modeldocRef = await firestore.collection('projects').doc(req.query.projectid).collection('models').doc(modelid).set(value);
 
         // Modify project doc
         const docRef = firestore.collection('projects').doc(req.query.projectid)
