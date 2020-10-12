@@ -71,25 +71,38 @@ router.route('/').post(async (req, res) => {
 })
 
 router.route('/projectmodel/').get(async (req, res) => {
-    const docRef = await firestore.collection('projects').doc(req.query.projectid).collection('models').get();
+    if(req.query.projectid)
+    {
+        const docRef = await firestore.collection('projects').doc(req.query.projectid).collection('models').get();
+    
+        const getModels = () => {
+            return new Promise((resolve, jeject) => {
+                var models = [];
 
-    const getModels = () => {
-        return new Promise((resolve, jeject) => {
-            var models = [];
+                docRef.forEach((doc) => {
+                    // console.log(doc.id, '=>', doc.data());
+                    models.push(doc.data())
+                });
 
-            docRef.forEach((doc) => {
-                // console.log(doc.id, '=>', doc.data());
-                models.push(doc.data())
-            });
+                resolve(models)
+            })
+        }
 
-            resolve(models)
+        getModels()
+        .then(m => {
+            res.json(m);
         })
     }
-
-    getModels()
-    .then(m => {
-        res.json(m);
-    })
+    else
+    {
+        res.json({
+            message: `No parameter named ${"projectid"}`,
+            status: 0,
+            details: [
+                
+            ]
+        })
+    }
 })
 
 // Add a model
