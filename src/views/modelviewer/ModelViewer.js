@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';import {
+import React, { useState, useEffect, useRef } from 'react';
+import {
     makeStyles
 } from '@material-ui/core';
 var Axios = require('axios');
@@ -20,27 +21,34 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-const ModelViewer = () => {
+const ModelViewer = ({model}) => {
+    const viewerContainerRef = useRef(null);
     const classes = useStyles();
-    const [viewerContainer, setViewerContainer] = React.useState()
-    const [Autodesk] = React.useState(window.Autodesk)
+    const [viewerContainer, setViewerContainer] = useState();
+    const [viewingInitialized, setViewingInitialized] = useState(false);
+    const [Autodesk] = useState(window.Autodesk);
+    var modelId = model.id;
 
     var options = {
         env: 'AutodeskProduction',
         api: 'derivativeV2', // TODO: for models uploaded to EMEA change this option to 'derivativeV2_EU'
         getAccessToken: getForgeToken
     };
-    var documentId = 'urn:' + process.env.REACT_APP_FORGE_URN;//+ getUrlParameter('urn');
 
     var viewer;
 
     useEffect(() => {
-    
         // Run this when the page is loaded
         Autodesk.Viewing.Initializer(options, function onInitialized(){
-            Autodesk.Viewing.Document.load(documentId, onDocumentLoadSuccess, onDocumentLoadFailure);
+            setViewingInitialized(true);
+            Autodesk.Viewing.Document.load('urn:' + model.urn, onDocumentLoadSuccess, onDocumentLoadFailure);
         });
-    });
+
+        if(viewingInitialized)
+        {
+            Autodesk.Viewing.Document.load('urn:' + model.urn, onDocumentLoadSuccess, onDocumentLoadFailure);
+        }
+    }, [model.id]);
 
     function getForgeToken(callback) {
         Axios({
@@ -95,7 +103,7 @@ const ModelViewer = () => {
             sharedPropertyDbPath: doc.getPropertyDbPath()
         };
 
-        viewer = new Autodesk.Viewing.Private.GuiViewer3D(viewerContainer);
+        viewer = new Autodesk.Viewing.Private.GuiViewer3D(viewerContainerRef.current);
         viewer.start(svfUrl, modelOptions, onLoadModelSuccess, onLoadModelError);
     }
 
@@ -128,9 +136,7 @@ const ModelViewer = () => {
     return(
         <div className={classes.forgeviewer}>
             <div
-                ref={(div) => {
-                    setViewerContainer(div);
-                }}
+                ref={viewerContainerRef}
             />
         </div>
     );

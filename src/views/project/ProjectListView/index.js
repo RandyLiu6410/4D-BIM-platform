@@ -1,41 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Container,
-  makeStyles
-} from '@material-ui/core';
-import Page from 'src/components/Page';
-import Results from './Results';
-import Toolbar from './Toolbar';
-import data from './data';
-var Axios = require('axios');
+import ProjectList from './ProjectList';
+import { useNavigate } from 'react-router-dom';
+import AuthService from '../../../services/AuthService';
+const axios = require('axios');
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    backgroundColor: theme.palette.background.dark,
-    minHeight: '100%',
-    paddingBottom: theme.spacing(3),
-    paddingTop: theme.spacing(3)
-  }
-}));
+const fetchData = (userInfo) => {
+  return new Promise(async (resolve, reject) => {
+    const userprojects = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getuserprojects', {
+      params: {
+        uid: userInfo.uid
+      }
+    })
+    const infos = await Promise.all(userprojects.data.map(async (id) => {
+      const info = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getprojectinfo', {
+        params: {
+          projectId: id
+        }
+      })
+      return info;
+    }))
+    const _infos = await Promise.all(infos.map(async (info) => {
+      var data = info.data;
+      const userinfo = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getuserinfo', {
+        params: {
+          uid: data.manager
+        }
+      });
+      data.managerName = userinfo.data.name.firstName + ' ' + userinfo.data.name.lastName;
+      return data;
+    }))
+    resolve(_infos);
+  })
+}
 
 const ProjectListView = () => {
-  const classes = useStyles();
-  const [projects] = useState(data);
+  const navigate = useNavigate();
+  const [userInfo, setUserInfo] = useState(JSON.parse(window.localStorage.getItem('userInfo')))
+  const [projects, setProjects] = useState([]);
 
-  return (
-    <Page
-      className={classes.root}
-      title="Projects"
-    >
-      <Container maxWidth={false}>
-        <Toolbar />
-        <Box mt={3}>
-          <Results projects={projects} />
-        </Box>
-      </Container>
-    </Page>
-  );
+  if(!AuthService.verifyToken())
+  {
+    navigate('/login');
+  }
+
+  useEffect(() => {
+    fetchData(userInfo).then((infos) => {
+      setProjects(infos);
+    })
+  }, [projects.length])
+
+  return(
+    <ProjectList userInfo={userInfo} projects={projects}/>
+  )
 };
 
 export default ProjectListView;

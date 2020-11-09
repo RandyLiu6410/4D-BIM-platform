@@ -14,7 +14,6 @@ const databaseRouter = require('./routes/database');
 app.use('/forgeapi', forgeApiRouter);
 app.use('/database', databaseRouter);
 
-
 // This is for web server to start listening to port 8080
 app.set('port', 8080);
 var server = app.listen(app.get('port'), function () {

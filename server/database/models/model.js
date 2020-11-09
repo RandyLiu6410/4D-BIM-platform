@@ -21,7 +21,6 @@ const modelSchema = Joi.object({
         .required(),
 
     schedule: Joi.string()
-        .required(),
 })
 
 module.exports = modelSchema;

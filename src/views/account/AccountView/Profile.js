@@ -31,7 +31,7 @@ const useStyles = makeStyles(() => ({
   }
 }));
 
-const Profile = ({ className, ...rest }) => {
+const Profile = ({ className, userInfo, ...rest }) => {
   const classes = useStyles();
 
   return (
@@ -47,16 +47,16 @@ const Profile = ({ className, ...rest }) => {
         >
           <Avatar
             className={classes.avatar}
-            src={user.avatar}
+            src={userInfo.photoURL}
           />
           <Typography
             color="textPrimary"
             gutterBottom
             variant="h3"
           >
-            {user.name}
+            {userInfo.displayName}
           </Typography>
-          <Typography
+          {/* <Typography
             color="textSecondary"
             variant="body1"
           >
@@ -68,7 +68,7 @@ const Profile = ({ className, ...rest }) => {
             variant="body1"
           >
             {`${moment().format('hh:mm A')} ${user.timezone}`}
-          </Typography>
+          </Typography> */}
         </Box>
       </CardContent>
       <Divider />

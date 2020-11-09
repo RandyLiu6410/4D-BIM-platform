@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Formik } from 'formik';
@@ -15,6 +15,14 @@ import {
 import FacebookIcon from 'src/icons/Facebook';
 import GoogleIcon from 'src/icons/Google';
 import Page from 'src/components/Page';
+import { any } from 'prop-types';
+import CookieService from '../../services/CookieService.js';
+import AuthService from '../../services/AuthService.js';
+import Firebase from '../../Firebase';
+import { useCookies } from 'react-cookie';
+
+const axios = require('axios');
+const cookieService = new CookieService();
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -22,12 +30,105 @@ const useStyles = makeStyles((theme) => ({
     height: '100%',
     paddingBottom: theme.spacing(3),
     paddingTop: theme.spacing(3)
+  },
+  failed: {
+    color: 'red',
+    textAlign: 'center',
+    fontWeight: 'bold'
   }
 }));
 
-const LoginView = () => {
+const LoginView = (props) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [loginSuccess, setLoginSuccess] = useState()
+  const [failedMessage, setFailedMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cookies, setCookie] = useCookies(['access_token']);
+
+  AuthService.signInWithCustomToken()
+  .then((success) => {
+    console.log(success)
+
+    navigate('/app/dashboard', { replace: true });
+  })
+  .catch((error) => {
+    console.log(error);
+  })
+
+  function handleSubmitWithGoogle() {
+    var provider = new Firebase.auth.GoogleAuthProvider();
+
+    Firebase.auth().signInWithPopup(provider).then(async (result) => {
+      // This gives you a Google Access Token. You can use it to access the Google API.
+      var token = result.credential.accessToken;
+      // The signed-in user info.
+      var user = result.user;
+      // ...
+      console.log(user.displayName)
+
+      const query = await Firebase.firestore().collection('users').where('email', '==', user.email)
+      .get()
+      .then(async (querySnapshot) => {
+          console.log(querySnapshot)
+          if(querySnapshot.size === 0)
+          {
+            await Firebase.firestore().collection('users').doc(user.uid).set({
+              id: result.user.uid,
+              name: {
+                  firstName: user.displayName,
+                  lastName: ''
+              },
+              email: user.email,
+              projects: []
+            });
+          }
+      })
+      .catch(function(error) {
+          console.log("Error getting documents: ", error);
+      });
+
+      if(result.credential.accessToken)
+      {
+        axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getUserToken', {
+          params: {
+            uid: result.user.uid
+          }
+        })
+        .then(function (responce) {
+          console.log(responce.data);
+
+          window.localStorage.setItem('userInfo', JSON.stringify({
+            displayName: result.user.displayName,
+            email: result.user.email,
+            emailVerified: result.user.emailVerified,
+            phoneNumber: result.user.phoneNumber,
+            photoURL: result.user.photoURL,
+            refreshToken: result.user.refreshToken,
+            uid: result.user.uid
+          }));
+          cookieService.set('access_token', responce.data, { path: '/' });
+
+          navigate('/', { replace: true });
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+      }
+
+    }).catch(function(error) {
+      // Handle Errors here.
+      var errorCode = error.code;
+      var errorMessage = error.message;
+      // The email of the user's account used.
+      var email = error.email;
+      // The firebase.auth.AuthCredential type that was used.
+      var credential = error.credential;
+      // ...
+
+      setFailedMessage(errorMessage);
+    });
+  }
 
   return (
     <Page
@@ -43,15 +144,54 @@ const LoginView = () => {
         <Container maxWidth="sm">
           <Formik
             initialValues={{
-              email: 'demo@devias.io',
-              password: 'Password123'
+              email: '',
+              password: ''
             }}
             validationSchema={Yup.object().shape({
               email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
               password: Yup.string().max(255).required('Password is required')
             })}
-            onSubmit={() => {
-              navigate('/app/dashboard', { replace: true });
+            onSubmit={async (values) => {
+              setIsSubmitting(true);
+
+              await Firebase.auth().signInWithEmailAndPassword(values.email, values.password)
+              .then((result) => {
+                  setLoginSuccess(true)
+
+                  axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getUserToken', {
+                    params: {
+                      uid: result.user.uid
+                    }
+                  })
+                  .then(function (responce) {
+                    console.log(responce.data);
+
+                    window.localStorage.setItem('userInfo', JSON.stringify({
+                      displayName: result.user.displayName,
+                      email: result.user.email,
+                      emailVerified: result.user.emailVerified,
+                      phoneNumber: result.user.phoneNumber,
+                      photoURL: result.user.photoURL,
+                      refreshToken: result.user.refreshToken,
+                      uid: result.user.uid
+                    }));
+                    cookieService.set('access_token', responce.data, { path: '/' });
+                    navigate('/', { replace: true });
+                  })
+                  .catch(function (error) {
+                    console.log(error);
+                  });
+              })
+              .catch(function(error) {
+                  console.log(error)
+                  // Handle Errors here.
+                  var errorCode = error.code;
+                  var errorMessage = error.message;
+                  // ...
+                  setLoginSuccess(false)
+                  setIsSubmitting(false);
+                  setFailedMessage(errorMessage);
+              });
             }}
           >
             {({
@@ -59,7 +199,6 @@ const LoginView = () => {
               handleBlur,
               handleChange,
               handleSubmit,
-              isSubmitting,
               touched,
               values
             }) => (
@@ -83,7 +222,7 @@ const LoginView = () => {
                   container
                   spacing={3}
                 >
-                  <Grid
+                  {/* <Grid
                     item
                     xs={12}
                     md={6}
@@ -98,16 +237,16 @@ const LoginView = () => {
                     >
                       Login with Facebook
                     </Button>
-                  </Grid>
+                  </Grid> */}
                   <Grid
                     item
                     xs={12}
-                    md={6}
+                    md={12}
                   >
                     <Button
                       fullWidth
                       startIcon={<GoogleIcon />}
-                      onClick={handleSubmit}
+                      onClick={handleSubmitWithGoogle}
                       size="large"
                       variant="contained"
                     >
@@ -153,6 +292,7 @@ const LoginView = () => {
                   value={values.password}
                   variant="outlined"
                 />
+                <div className={classes.failed}>{failedMessage}</div>
                 <Box my={2}>
                   <Button
                     color="primary"

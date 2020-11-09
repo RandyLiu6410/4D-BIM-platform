@@ -174,6 +174,8 @@ router.route('/api/forge/modelderivative/:urn').get((req, res) => {
             message: 'success',
             urn: urn
         });
+
+        // Upload urn to the database
     })
     .catch(function (error) {
         // Failed

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
@@ -23,29 +23,19 @@ import {
   Folder as FolderIcon
 } from 'react-feather';
 import NavItem from './NavItem';
-
-const user = {
-  avatar: '/static/images/avatars/avatar_6.png',
-  jobTitle: 'Senior Developer',
-  name: 'Katarina Smith'
-};
+import AuthService from '../../../services/AuthService';
 
 const items = [
-  {
-    href: '/app/dashboard',
-    icon: BarChartIcon,
-    title: 'Dashboard'
-  },
+  // {
+  //   href: '/app/dashboard',
+  //   icon: BarChartIcon,
+  //   title: 'Dashboard'
+  // },
   {
     href: '/app/projects',
     icon: FolderIcon,
     title: 'Projects'
   },
-  // {
-  //   href: '/app/products',
-  //   icon: ShoppingBagIcon,
-  //   title: 'Products'
-  // },
   {
     href: '/app/account',
     icon: UserIcon,
@@ -56,21 +46,21 @@ const items = [
     icon: SettingsIcon,
     title: 'Settings'
   },
-  {
-    href: '/login',
-    icon: LockIcon,
-    title: 'Login'
-  },
-  {
-    href: '/register',
-    icon: UserPlusIcon,
-    title: 'Register'
-  },
-  {
-    href: '/404',
-    icon: AlertCircleIcon,
-    title: 'Error'
-  }
+  // {
+  //   href: '/login',
+  //   icon: LockIcon,
+  //   title: 'Login'
+  // },
+  // {
+  //   href: '/register',
+  //   icon: UserPlusIcon,
+  //   title: 'Register'
+  // },
+  // {
+  //   href: '/404',
+  //   icon: AlertCircleIcon,
+  //   title: 'Error'
+  // }
 ];
 
 const useStyles = makeStyles(() => ({
@@ -89,13 +79,24 @@ const useStyles = makeStyles(() => ({
   }
 }));
 
-const NavBar = ({ onMobileClose, openMobile }) => {
+const NavBar = (props) => {
   const classes = useStyles();
   const location = useLocation();
+  const [user, setUser] = useState({
+    avatar: '',
+    jobTitle: '',
+    displayName: ''
+  })
 
   useEffect(() => {
-    if (openMobile && onMobileClose) {
-      onMobileClose();
+    if(props.userInfo) {
+      setUser(props.userInfo)
+    }
+  }, [props.userInfo]);
+
+  useEffect(() => {
+    if (props.openMobile && props.onMobileClose) {
+      props.onMobileClose();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
@@ -115,7 +116,7 @@ const NavBar = ({ onMobileClose, openMobile }) => {
         <Avatar
           className={classes.avatar}
           component={RouterLink}
-          src={user.avatar}
+          src={user.photoURL}
           to="/app/account"
         />
         <Typography
@@ -123,7 +124,7 @@ const NavBar = ({ onMobileClose, openMobile }) => {
           color="textPrimary"
           variant="h5"
         >
-          {user.name}
+          {user.displayName}
         </Typography>
         <Typography
           color="textSecondary"
@@ -188,8 +189,8 @@ const NavBar = ({ onMobileClose, openMobile }) => {
         <Drawer
           anchor="left"
           classes={{ paper: classes.mobileDrawer }}
-          onClose={onMobileClose}
-          open={openMobile}
+          onClose={props.onMobileClose}
+          open={props.openMobile}
           variant="temporary"
         >
           {content}

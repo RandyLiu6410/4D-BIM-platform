@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Grid,
@@ -7,6 +7,8 @@ import {
 import Page from 'src/components/Page';
 import Profile from './Profile';
 import ProfileDetails from './ProfileDetails';
+import { useNavigate } from 'react-router-dom';
+import AuthService from '../../../services/AuthService';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -19,6 +21,12 @@ const useStyles = makeStyles((theme) => ({
 
 const Account = () => {
   const classes = useStyles();
+  const [userInfo, setUserInfo] = useState(JSON.parse(window.localStorage.getItem('userInfo')));
+  const navigate = useNavigate();
+  if(!AuthService.verifyToken())
+  {
+    navigate('/login');
+  }
 
   return (
     <Page
@@ -36,7 +44,7 @@ const Account = () => {
             md={6}
             xs={12}
           >
-            <Profile />
+            <Profile userInfo={userInfo}/>
           </Grid>
           <Grid
             item
@@ -44,7 +52,7 @@ const Account = () => {
             md={6}
             xs={12}
           >
-            <ProfileDetails />
+            <ProfileDetails userInfo={userInfo}/>
           </Grid>
         </Grid>
       </Container>

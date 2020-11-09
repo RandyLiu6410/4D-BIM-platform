@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState }  from 'react';
 import {
   Box,
   Container,
@@ -7,6 +7,8 @@ import {
 import Page from 'src/components/Page';
 import Notifications from './Notifications';
 import Password from './Password';
+import { useNavigate } from 'react-router-dom';
+import AuthService from '../../../services/AuthService';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -19,6 +21,12 @@ const useStyles = makeStyles((theme) => ({
 
 const SettingsView = () => {
   const classes = useStyles();
+  const [userInfo, setUserInfo] = useState(JSON.parse(window.localStorage.getItem('userInfo')));
+  const navigate = useNavigate();
+  if(!AuthService.verifyToken())
+  {
+    navigate('/login');
+  }
 
   return (
     <Page

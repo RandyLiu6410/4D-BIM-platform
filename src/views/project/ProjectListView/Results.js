@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import moment from 'moment';
@@ -6,8 +7,13 @@ import PerfectScrollbar from 'react-perfect-scrollbar';
 import {
   Avatar,
   Box,
+  Button,
   Card,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogTitle,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -17,7 +23,10 @@ import {
   Typography,
   makeStyles
 } from '@material-ui/core';
+import InfoIcon from '@material-ui/icons/Info';
+import Detail from './Detail';
 import getInitials from 'src/utils/getInitials';
+const axios = require('axios');
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -28,9 +37,25 @@ const useStyles = makeStyles((theme) => ({
 
 const Results = ({ className, projects, ...rest }) => {
   const classes = useStyles();
+  const navigate = useNavigate();
   const [selectedProjectIds, setSelectedProjectIds] = useState([]);
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [dialogProject, setDialogProject] = useState({})
+
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleViewProject = (index) => {
+    setDialogProject(projects[index]);
+    setOpen(true);
+  }
 
   const handleSelectAll = (event) => {
     let newSelectedProjectIds;
@@ -72,6 +97,12 @@ const Results = ({ className, projects, ...rest }) => {
     setPage(newPage);
   };
 
+  const secondsToDate = (seconds) => {
+    var t = new Date(1970, 0, 1); // Epoch
+    t.setSeconds(seconds);
+    return t;
+  }
+
   return (
     <Card
       className={clsx(classes.root, className)}
@@ -82,7 +113,7 @@ const Results = ({ className, projects, ...rest }) => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox">
+                {/* <TableCell padding="checkbox">
                   <Checkbox
                     checked={selectedProjectIds.length === projects.length}
                     color="primary"
@@ -92,7 +123,7 @@ const Results = ({ className, projects, ...rest }) => {
                     }
                     onChange={handleSelectAll}
                   />
-                </TableCell>
+                </TableCell> */}
                 <TableCell>
                   Name
                 </TableCell>
@@ -105,22 +136,24 @@ const Results = ({ className, projects, ...rest }) => {
                 <TableCell>
                   Created At
                 </TableCell>
+                <TableCell />
+                <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
-              {projects.slice(0, limit).map((project) => (
+              {projects.slice(0, limit).map((project, index) => (
                 <TableRow
                   hover
                   key={project.id}
                   selected={selectedProjectIds.indexOf(project.id) !== -1}
                 >
-                  <TableCell padding="checkbox">
+                  {/* <TableCell padding="checkbox">
                     <Checkbox
                       checked={selectedProjectIds.indexOf(project.id) !== -1}
                       onChange={(event) => handleSelectOne(event, project.id)}
                       value="true"
                     />
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <Box
                       alignItems="center"
@@ -135,13 +168,30 @@ const Results = ({ className, projects, ...rest }) => {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {`${project.address.city}, ${project.address.state}, ${project.address.country}`}
+                    {`${project.location.street}, ${project.location.city}, ${project.location.country}`}
                   </TableCell>
                   <TableCell>
-                    {project.manager}
+                    {project.managerName}
                   </TableCell>
                   <TableCell>
-                    {moment(project.createdAt).format('DD/MM/YYYY')}
+                    {moment(secondsToDate(project.createdAt.seconds)).format('DD/MM/YYYY')}
+                  </TableCell>
+                  <TableCell>
+                    {
+                      project.models.length > 0 ? <Button color="primary" variant="contained" component="span" onClick={() => navigate(`/app/dashboard/${project.id}`)}>
+                        View Models
+                      </Button>
+                      :
+                      <div />
+                    }
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      color="inherit"
+                      onClick={() => {handleViewProject(index)}}
+                    >
+                      <InfoIcon />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -158,6 +208,15 @@ const Results = ({ className, projects, ...rest }) => {
         rowsPerPage={limit}
         rowsPerPageOptions={[5, 10, 25]}
       />
+      <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
+        <DialogTitle id="form-dialog-title">Detail</DialogTitle>
+        <Detail project={dialogProject}/>
+        <DialogActions>
+          <Button onClick={handleClose} color="primary">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 };
