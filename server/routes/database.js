@@ -16,7 +16,9 @@ const projectSchema = require('../database/models/project');
 const modelSchema = require('../database/models/model');
 const accountSchema = require('../database/models/account');
 
-var util = require("../controller/util");
+// utils
+var util = require('../utils/util');
+const httpResponse = require('../utils/httpResponse');
 
 // firebase firestore
 var firebaseConfig = require(process.env.firebaseconfig_PATH);
@@ -40,34 +42,25 @@ admin.initializeApp({
 ///////////////
 
 router.route('/users').get(async (req, res) => {
-    const docRef = await firestore.collection('users').get();
-
-    const getProjects = () => {
-        return new Promise((resolve, jeject) => {
-            var users = [];
-
-            docRef.forEach((doc) => {
-                // console.log(doc.id, '=>', doc.data());
-                users.push(doc.data())
-            });
-
-            resolve(users)
+    firestore.collection('users').get()
+    .then(docRef => {
+        util.pushArray(docRef)
+        .then(u => {
+            res.status(httpResponse.OK).json(u);
         })
-    }
-
-    getProjects()
-    .then(u => {
-        res.json(u);
+    })
+    .catch(err => {
+        res.status(httpResponse.NotFound).json(err);
     })
 })
 
 router.route('/getuserinfo').get(async (req, res) => {
     firestore.collection('users').doc(req.query.uid).get()
     .then(doc => {
-        res.json(doc.data());
+        res.status(httpResponse.OK).json(doc.data());
     })
     .catch(err => {
-        res.json(err);
+        res.status(httpResponse.NotFound).json(err);
     })
 })
 
@@ -77,24 +70,15 @@ router.route('/getuserinfo').get(async (req, res) => {
 
 // Get all projects
 router.route('/').get(async (req, res) => {
-    const docRef = await firestore.collection('projects').get();
-
-    const getProjects = () => {
-        return new Promise((resolve, jeject) => {
-            var projects = [];
-
-            docRef.forEach((doc) => {
-                // console.log(doc.id, '=>', doc.data());
-                projects.push(doc.data())
-            });
-
-            resolve(projects)
+    firestore.collection('projects').get()
+    .then(docRef => {
+        util.pushArray(docRef)
+        .then(p => {
+            res.status(httpResponse.OK).json(p);
         })
-    }
-
-    getProjects()
-    .then(p => {
-        res.json(p);
+    })
+    .catch(err => {
+        res.status(httpResponse.NotFound).json(err);
     })
 })
 
@@ -102,10 +86,10 @@ router.route('/').get(async (req, res) => {
 router.route('/getprojectinfo').get(async (req, res) => {
     firestore.collection('projects').doc(req.query.projectId).get()
     .then(doc => {
-        res.json(doc.data());
+        res.status(httpResponse.OK).json(doc.data());
     })
     .catch(err => {
-        res.json(err);
+        res.status(httpResponse.NotFound).json(err);
     })
 })
 
@@ -113,42 +97,46 @@ router.route('/getprojectinfo').get(async (req, res) => {
 router.route('/getuserprojects').get(async (req, res) => {
     firestore.collection('users').doc(req.query.uid).get()
     .then(docRef => {
-        res.json(docRef.data().projects);
+        res.status(httpResponse.OK).json(docRef.data().projects);
     })
     .catch(err => {
-        res.json(err)
+        res.status(httpResponse.NotFound).json(err)
     })
 })
 
 // Add a project to user
 router.route('/adduserproject').post(async (req, res) => {
     // Modify user doc
-    const docRef = firestore.collection('users').doc(req.query.uid)
-    docRef.update({
-        projects: firebase.firestore.FieldValue.arrayUnion(req.query.projectId)
-    })
-    .then(doc => {
-        res.json({
-            message: `Add project ${req.query.projectId} to user ${req.query.uid} successfully.`,
-            status: 1,
-            details: {}
+    if(req.query.uid && req.query.projectId){
+        const docRef = firestore.collection('users').doc(req.query.uid)
+        docRef.update({
+            projects: firebase.firestore.FieldValue.arrayUnion(req.query.projectId)
         })
-    })
-    .catch(err => {
-        res.json({
-            message: `Failed to add project ${req.query.projectId} to user ${req.query.uid}.`,
-            status: 0,
-            details: {
-                message: err
-            }
+        .then(() => {
+            res.status(httpResponse.Created).json({
+                message: `Add project ${req.query.projectId} to user ${req.query.uid} successfully.`,
+                status: 1,
+                details: req.query
+            })
         })
-    })
+        .catch(err => {
+            res.status(httpResponse.ServiceUnavailable).json({
+                message: `Failed to add project ${req.query.projectId} to user ${req.query.uid}.`,
+                status: 0,
+                details: {
+                    message: err
+                }
+            })
+        })
+    }
+    else{
+        res.status(httpResponse.BadRequest).send('uid and projectId cannot be empty.')
+    }
 })
 
 // Add a project
 router.route('/project').post(async (req, res) => {
     try {
-        console.log(req)
         const _value = {
             id: uuid(),
             name: req.query.name,
@@ -164,18 +152,26 @@ router.route('/project').post(async (req, res) => {
         console.log(_value)
         const value = await projectSchema.validateAsync(_value);
 
-        const docRef = await firestore.collection('projects').doc(value.id).set(value)
-
-        res.json({
-            message: "Add a project successfully.",
-            status: 1,
-            details: {
-                projectId: value.id
-            }
+        firestore.collection('projects').doc(value.id).set(value)
+        .then(() => {
+            res.status(httpResponse.Created).json({
+                message: "Add a project successfully.",
+                status: 1,
+                details: value
+            })
+        })
+        .catch(err => {
+            res.status(httpResponse.ServiceUnavailable).json({
+                message: "Failed to add a project.",
+                status: 0,
+                details: {
+                    message: err
+                }
+            })
         })
     }
     catch (err) {
-        res.json({
+        res.status(httpResponse.BadRequest).json({
             message: "Failed to add a project.",
             status: 0,
             details: {
@@ -188,33 +184,20 @@ router.route('/project').post(async (req, res) => {
 router.route('/projectmodel/').get(async (req, res) => {
     if(req.query.projectId)
     {
-        const docRef = await firestore.collection('projects').doc(req.query.projectId).collection('models').get();
-    
-        const getModels = () => {
-            return new Promise((resolve, jeject) => {
-                var models = [];
-
-                docRef.forEach((doc) => {
-                    // console.log(doc.id, '=>', doc.data());
-                    models.push(doc.data())
-                });
-
-                resolve(models)
+        firestore.collection('projects').doc(req.query.projectId).collection('models').get()
+        .then(docRef => {
+            util.pushArray(docRef)
+            .then(m => {
+                res.status(httpResponse.OK).json(m);
             })
-        }
-
-        getModels()
-        .then(m => {
-            res.json(m);
+        })
+        .then(err => {
+            res.status(httpResponse.ServiceUnavailable).json(err);
         })
     }
     else
     {
-        res.json({
-            message: `No parameter named ${"projectId"}`,
-            status: 0,
-            details: {}
-        })
+        res.status(httpResponse.BadRequest).send('projectId cannot be empty')
     }
 })
 
@@ -228,28 +211,35 @@ router.route('/projectmodel/').post(async (req, res) => {
         });
 
         // Add model doc
-        await firestore.collection('projects').doc(req.query.projectId).collection('models').doc(value.id).set(value);
-
-        // Modify project doc
-        const docRef = firestore.collection('projects').doc(req.query.projectId)
-        await docRef.update({
-            models: firebase.firestore.FieldValue.arrayUnion(value.id)
-        });
-
-        res.json({
-            message: `Add a model to project ${req.query.projectId} successfully.`,
-            status: 1,
-            details: {
-                message: value
-            }
+        firestore.collection('projects').doc(req.query.projectId).collection('models').doc(value.id).set(value)
+        .then(() => {
+            // Modify project doc
+            firestore.collection('projects').doc(req.query.projectId).update({
+                models: firebase.firestore.FieldValue.arrayUnion(value.id)
+            })
+            .then(() => {
+                res.status(httpResponse.Created).json({
+                    message: `Add a model to project ${req.query.projectId} successfully.`,
+                    status: 1,
+                    details: {
+                        message: value
+                    }
+                })
+            })
+            .then(err => {
+                res.status(httpResponse.ServiceUnavailable).json(err);
+            })
+        })
+        .catch(err => {
+            res.status(httpResponse.ServiceUnavailable).json(err);
         })
     }
     catch (err) {
-        res.json({
+        res.status(httpResponse.BadRequest).json({
             message: `Failed to add a model to project ${req.query.projectId}.`,
             status: 0,
             details: {
-                message: err
+                message: err.details
             }
         })
     }
@@ -259,56 +249,59 @@ router.route('/projectmodel/').post(async (req, res) => {
 // To deal with user's token creation
 ///////////////
 
-router.route('/getusertoken/').get(async (req, res) => {
-    admin.auth().createCustomToken(req.query.uid)
-    .then(function(customToken) {
-        // Send token back to client
-        console.log(customToken)
-        res.json(customToken)
-    })
-    .catch(function(error) {
-        console.log('Error creating custom token:', error);
-        res.json(error)
-    });
-})
+// router.route('/getusertoken/').get(async (req, res) => {
+//     if(req.query.uid){
+//         admin.auth().createCustomToken(req.query.uid)
+//         .then(customToken => {
+//             // Send token back to client
+//             res.status(httpResponse.OK).send(customToken)
+//         })
+//         .catch(error => {
+//             res.status(httpResponse.Unauthorized).json(error)
+//         });
+//     }
+//     else{
+//         res.status(httpResponse.BadRequest).send('uid cannot be empty.')
+//     }
+// })
 
-router.route('/verifyusertoken/').get(async (req, res) => {
-    admin.auth().verifyIdToken(req.query.token)
-    .then(function(decodedToken) {
-        let uid = decodedToken.uid;
-        // ...
-        res.json({
-            uid: uid
-        })
-    }).catch(function(error) {
-        // Handle error
-        res.json({
-            error: error
-        })
-    });
-})
+// router.route('/verifyusertoken/').get(async (req, res) => {
+//     admin.auth().verifyIdToken(req.query.token)
+//     .then(function(decodedToken) {
+//         let uid = decodedToken.uid;
+//         // ...
+//         res.json({
+//             uid: uid
+//         })
+//     }).catch(function(error) {
+//         // Handle error
+//         res.json({
+//             error: error
+//         })
+//     });
+// })
 
-router.route('/getuserbyemail/').get(async (req, res) => {
-    const query = await firestore.collection('users').where('email', '==', req.query.email)
-    .get()
-    .then(function(querySnapshot) {
-        console.log(querySnapshot)
-        if(querySnapshot.size > 0)
-        {
-            querySnapshot.forEach(function(doc) {
-                res.json(doc.data())
-            });
-        }
-        else
-        {
-            res.json('none')
-        }
-    })
-    .catch(function(error) {
-        console.log("Error getting documents: ", error);
-        res.json(error)
-    });
-})
+// router.route('/getuserbyemail/').get(async (req, res) => {
+//     const query = await firestore.collection('users').where('email', '==', req.query.email)
+//     .get()
+//     .then(function(querySnapshot) {
+//         console.log(querySnapshot)
+//         if(querySnapshot.size > 0)
+//         {
+//             querySnapshot.forEach(function(doc) {
+//                 res.json(doc.data())
+//             });
+//         }
+//         else
+//         {
+//             res.json('none')
+//         }
+//     })
+//     .catch(function(error) {
+//         console.log("Error getting documents: ", error);
+//         res.json(error)
+//     });
+// })
 
 ///////////////
 // To deal with user creation and login
@@ -317,112 +310,112 @@ router.route('/getuserbyemail/').get(async (req, res) => {
 //
 ///////////////
 
-router.route('/createuserwithemail/').post(async (req, res) => {
-    try {
-        const value = await accountSchema.validateAsync(req.query);
+// router.route('/createuserwithemail/').post(async (req, res) => {
+//     try {
+//         const value = await accountSchema.validateAsync(req.query);
 
-        await firebase.auth().createUserWithEmailAndPassword(value.email, value.password)
-        .then(async (suc) => {// Add model doc
-            const userdocRef = await firestore.collection('users').doc(suc.user.uid).set({
-                id: suc.user.uid,
-                name: {
-                    firstName: value.firstName,
-                    lastName: value.lastName
-                },
-                email: value.email,
-                projects: []
-            });
+//         await firebase.auth().createUserWithEmailAndPassword(value.email, value.password)
+//         .then(async (suc) => {// Add model doc
+//             const userdocRef = await firestore.collection('users').doc(suc.user.uid).set({
+//                 id: suc.user.uid,
+//                 name: {
+//                     firstName: value.firstName,
+//                     lastName: value.lastName
+//                 },
+//                 email: value.email,
+//                 projects: []
+//             });
 
-            res.json({
-                message: "Register successfully.",
-                status: 1,
-                details: {}
-            })
-        })
-        .catch(function(error) {
-            // Handle Errors here.
-            var errorCode = error.code;
-            var errorMessage = error.message;
-            // ...
-            res.json({
-                message: "Failed to register",
-                status: 0,
-                details: {
-                    message: error.message
-                }
-            })
-          });
-    }
-    catch (err) {
-        res.json({
-            message: "Failed to register",
-            status: 0,
-            details: {
-                message: err.details
-            }
-        })
-    }
-})
+//             res.json({
+//                 message: "Register successfully.",
+//                 status: 1,
+//                 details: {}
+//             })
+//         })
+//         .catch(function(error) {
+//             // Handle Errors here.
+//             var errorCode = error.code;
+//             var errorMessage = error.message;
+//             // ...
+//             res.json({
+//                 message: "Failed to register",
+//                 status: 0,
+//                 details: {
+//                     message: error.message
+//                 }
+//             })
+//           });
+//     }
+//     catch (err) {
+//         res.json({
+//             message: "Failed to register",
+//             status: 0,
+//             details: {
+//                 message: err.details
+//             }
+//         })
+//     }
+// })
 
-router.route('/loginwithemail/').post(async (req, res) => {
-    console.log(req.query)
-    await firebase.auth().signInWithEmailAndPassword(req.query.email, req.query.password)
-    .then((suc) => {
-        console.log(suc)
-        // suc.getToken().then(function(token){
-        //     console.log(token)
-        // });
+// router.route('/loginwithemail/').post(async (req, res) => {
+//     console.log(req.query)
+//     await firebase.auth().signInWithEmailAndPassword(req.query.email, req.query.password)
+//     .then((suc) => {
+//         console.log(suc)
+//         // suc.getToken().then(function(token){
+//         //     console.log(token)
+//         // });
 
-        res.json({
-            message: "Login successfully.",
-            status: 1,
-            details: {
-                message: suc.getToken().then(token => {return token})
-            }
-        })
-    })
-    .catch(function(error) {
-        console.log(error)
-        // Handle Errors here.
-        var errorCode = error.code;
-        var errorMessage = error.message;
-        // ...
-        res.json({
-            message: "Failed to Login",
-            status: 0,
-            details: {
-                message: error
-            }
-        })
-    });
-})
+//         res.json({
+//             message: "Login successfully.",
+//             status: 1,
+//             details: {
+//                 message: suc.getToken().then(token => {return token})
+//             }
+//         })
+//     })
+//     .catch(function(error) {
+//         console.log(error)
+//         // Handle Errors here.
+//         var errorCode = error.code;
+//         var errorMessage = error.message;
+//         // ...
+//         res.json({
+//             message: "Failed to Login",
+//             status: 0,
+//             details: {
+//                 message: error
+//             }
+//         })
+//     });
+// })
 
-router.route('/createUserwithgoogle/').post(async (req, res) => {
-    try {
-        const value = await accountSchema.validateAsync(req.body);
+// router.route('/createUserwithgoogle/').post(async (req, res) => {
+//     try {
+//         const value = await accountSchema.validateAsync(req.body);
 
-        await firebase.auth().createUserWithEmailAndPassword(value.email, value.password).catch(function(error) {
-            // Handle Errors here.
-            var errorCode = error.code;
-            var errorMessage = error.message;
-            // ...
-          });
+//         await firebase.auth().createUserWithEmailAndPassword(value.email, value.password).catch(function(error) {
+//             // Handle Errors here.
+//             var errorCode = error.code;
+//             var errorMessage = error.message;
+//             // ...
+//           });
 
-        res.json({
-            message: "Register successfully.",
-            status: 1,
-            details: {}
-        })
-    }
-    catch (err) {
-        res.json({
-            message: "Failed to register",
-            status: 0,
-            details: {
-                message: err.details
-            }
-        })
-    }
-})
+//         res.json({
+//             message: "Register successfully.",
+//             status: 1,
+//             details: {}
+//         })
+//     }
+//     catch (err) {
+//         res.json({
+//             message: "Failed to register",
+//             status: 0,
+//             details: {
+//                 message: err.details
+//             }
+//         })
+//     }
+// })
 
 module.exports = router;

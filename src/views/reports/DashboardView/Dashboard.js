@@ -20,12 +20,11 @@ import TotalProfit from './TotalProfit';
 import TrafficByDevice from './TrafficByDevice';
 import ModelViewer from '../../modelviewer/index';
 import CookieService from '../../../services/CookieService';
-
-const axios = require('axios');
+import databaseAPI from '../../../utils/databaseAPI';
 
 const fetchData = (projectId) => {
   return new Promise(async (resolve, reject) => {
-    const modelInfos = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/projectmodel', {
+    const modelInfos = await databaseAPI.get('/projectmodel', {
       params: {
           projectId: projectId
       }

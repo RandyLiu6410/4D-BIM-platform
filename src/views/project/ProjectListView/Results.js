@@ -26,7 +26,6 @@ import {
 import InfoIcon from '@material-ui/icons/Info';
 import Detail from './Detail';
 import getInitials from 'src/utils/getInitials';
-const axios = require('axios');
 
 const useStyles = makeStyles((theme) => ({
   root: {},

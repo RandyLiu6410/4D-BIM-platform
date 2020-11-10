@@ -20,8 +20,8 @@ import CookieService from '../../services/CookieService.js';
 import AuthService from '../../services/AuthService.js';
 import Firebase from '../../Firebase';
 import { useCookies } from 'react-cookie';
+import databaseAPI from '../../utils/databaseAPI';
 
-const axios = require('axios');
 const cookieService = new CookieService();
 
 const useStyles = makeStyles((theme) => ({
@@ -90,7 +90,7 @@ const LoginView = (props) => {
 
       if(result.credential.accessToken)
       {
-        axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getUserToken', {
+        databaseAPI.get('/getUserToken', {
           params: {
             uid: result.user.uid
           }
@@ -158,7 +158,7 @@ const LoginView = (props) => {
               .then((result) => {
                   setLoginSuccess(true)
 
-                  axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getUserToken', {
+                  databaseAPI.get('/getUserToken', {
                     params: {
                       uid: result.user.uid
                     }

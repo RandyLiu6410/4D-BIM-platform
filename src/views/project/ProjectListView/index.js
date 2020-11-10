@@ -2,17 +2,17 @@ import React, { useState, useEffect } from 'react';
 import ProjectList from './ProjectList';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../../../services/AuthService';
-const axios = require('axios');
+import databaseAPI from '../../../utils/databaseAPI';
 
 const fetchData = (userInfo) => {
   return new Promise(async (resolve, reject) => {
-    const userprojects = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getuserprojects', {
+    const userprojects = await databaseAPI.get('/getuserprojects', {
       params: {
         uid: userInfo.uid
       }
     })
     const infos = await Promise.all(userprojects.data.map(async (id) => {
-      const info = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getprojectinfo', {
+      const info = await databaseAPI.get('/getprojectinfo', {
         params: {
           projectId: id
         }
@@ -21,7 +21,7 @@ const fetchData = (userInfo) => {
     }))
     const _infos = await Promise.all(infos.map(async (info) => {
       var data = info.data;
-      const userinfo = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/getuserinfo', {
+      const userinfo = await databaseAPI.get('/getuserinfo', {
         params: {
           uid: data.manager
         }

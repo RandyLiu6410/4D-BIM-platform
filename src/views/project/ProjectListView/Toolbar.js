@@ -22,7 +22,7 @@ import {
 } from '@material-ui/core';
 import { Search as SearchIcon } from 'react-feather';
 import { v4 as uuid } from 'uuid';
-const axios = require('axios');
+import databaseAPI from '../../../utils/databaseAPI';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -48,7 +48,7 @@ const Toolbar = ({ className, userInfo, ...rest }) => {
   const [userItems, setUserIems] = useState(null);
 
   useEffect(() => {
-    axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/users')
+    databaseAPI.get('/users', null)
     .then(res => {
       console.log(res);
       setUsers(res.data);
@@ -89,15 +89,15 @@ const Toolbar = ({ className, userInfo, ...rest }) => {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    axios.post('http://' + process.env.REACT_APP_Database_API_URL + '/project', null, {
+    databaseAPI.post('/project', null, {
       params: projectInfo
     })
     .then(function (response) {
       console.log(response);
 
-      const projectId = response.data.details.projectId;
+      const projectId = response.data.details.id;
 
-      axios.post('http://' + process.env.REACT_APP_Database_API_URL + '/adduserproject', null, {
+      databaseAPI.post('/adduserproject', null, {
         params: {
           uid: userInfo.uid,
           projectId: projectId
@@ -106,7 +106,7 @@ const Toolbar = ({ className, userInfo, ...rest }) => {
       .then(function (response) {
         console.log(response);
 
-        axios.post('http://' + process.env.REACT_APP_Database_API_URL + '/adduserproject', null, {
+        databaseAPI.post('/adduserproject', null, {
           params: {
             uid: projectInfo.manager,
             projectId: projectId

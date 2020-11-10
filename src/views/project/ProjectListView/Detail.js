@@ -22,16 +22,22 @@ import {
   Typography,
   makeStyles
 } from '@material-ui/core';
-const axios = require('axios');
+import databaseAPI from '../../../utils/databaseAPI';
+import forgeAPI from '../../../utils/forgeAPI';
 
 const fetchData = (projectId) => {
     return new Promise(async (resolve, reject) => {
-      const modelInfos = await axios.get('http://' + process.env.REACT_APP_Database_API_URL + '/projectmodel', {
+      databaseAPI.get('/projectmodel', {
         params: {
             projectId: projectId
         }
       })
-      resolve(modelInfos);
+      .then((modelInfos) => {
+        resolve(modelInfos);
+      })
+      .catch((err) => {
+          reject(err);
+      })
     })
   }
 
@@ -58,12 +64,14 @@ const Detail = ({project, ...rest}) => {
       formData.append("fileToUpload", event.target.files[0])
   
       setUploading(true);
-      axios.post('http://' + process.env.REACT_APP_Forge_API_URL + '/api/forge/oauth', {
-        FORGE_CLIENT_ID: process.env.REACT_APP_FORGE_CLIENT_ID,
-        FORGE_CLIENT_SECRET: process.env.REACT_APP_FORGE_CLIENT_SECRET
+      forgeAPI.post('/api/forge/oauth', null, {
+        params: {
+            FORGE_CLIENT_ID: process.env.REACT_APP_FORGE_CLIENT_ID,
+            FORGE_CLIENT_SECRET: process.env.REACT_APP_FORGE_CLIENT_SECRET
+        }
       })
       .then(function () {
-        axios.post('http://' + process.env.REACT_APP_Forge_API_URL + '/api/forge/datamanagement/bucket/upload', formData, {
+        forgeAPI.post('/api/forge/datamanagement/bucket/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -71,7 +79,7 @@ const Detail = ({project, ...rest}) => {
         .then(function (responce) {
             console.log(responce);
 
-            axios.post('http://' + process.env.REACT_APP_Database_API_URL + '/projectmodel', null, {
+            databaseAPI.post('/projectmodel', null, {
                 params: {
                   projectId: project.id,
                   name: filename,
@@ -91,14 +99,17 @@ const Detail = ({project, ...rest}) => {
                 }
             })
             .catch(function (error) {
+                setUploading(false);
                 console.log(error);
             })
         })
         .catch(function (error) {
+            setUploading(false);
           console.log(error);
         });
       })
       .catch(function (error) {
+        setUploading(false);
         console.log(error);
       });
     }

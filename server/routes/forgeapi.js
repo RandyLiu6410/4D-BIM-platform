@@ -7,9 +7,12 @@ var FORGE_CLIENT_ID = '';
 var access_token = '';
 var fileToUpload = null;
 
+// utils
+const httpResponse = require('../utils/httpResponse');
+
 router.route('/api/forge/oauth').post((req, res) => {
     const scopes = 'data:read data:write data:create bucket:create bucket:read';
-    FORGE_CLIENT_ID = req.body.FORGE_CLIENT_ID;
+    FORGE_CLIENT_ID = req.query.FORGE_CLIENT_ID;
 
     Axios({
         method: 'POST',
@@ -18,23 +21,21 @@ router.route('/api/forge/oauth').post((req, res) => {
             'content-type': 'application/x-www-form-urlencoded',
         },
         data: querystring.stringify({
-            client_id: req.body.FORGE_CLIENT_ID,
-            client_secret: req.body.FORGE_CLIENT_SECRET,
+            client_id: req.query.FORGE_CLIENT_ID,
+            client_secret: req.query.FORGE_CLIENT_SECRET,
             grant_type: 'client_credentials',
             scope: scopes
         })
     })
-        .then(function (response) {
-            // Success
-            access_token = response.data.access_token;
-            console.log(response);
-            res.redirect('/forgeapi/api/forge/datamanagement/bucket/create');
-        })
-        .catch(function (error) {
-            // Failed
-            console.log(error);
-            res.send('Failed to authenticate');
-        });
+    .then(response => {
+        // Success
+        access_token = response.data.access_token;
+        res.redirect('/forgeapi/api/forge/datamanagement/bucket/create');
+    })
+    .catch(error => {
+        // Failed
+        res.status(httpResponse.Unauthorized).send('Failed to authenticate');
+    });
 });
 
 // Route /api/forge/datamanagement/bucket/create
@@ -56,19 +57,17 @@ router.route('/api/forge/datamanagement/bucket/create').get((req, res) => {
             'policyKey': policyKey
         })
     })
-    .then(function (response) {
+    .then(response => {
         // Success
-        console.log(response);
         res.redirect('/forgeapi/api/forge/datamanagement/bucket/detail');
     })
-    .catch(function (error) {
+    .catch(error => {
         if (error.response && error.response.status == 409) {
             console.log('Bucket already exists, skip creation.');
             res.redirect('/forgeapi/api/forge/datamanagement/bucket/detail');
         }
         // Failed
-        console.log(error);
-        res.send('Failed to create a new bucket');
+        res.status(httpResponse.InternalServerError).send('Failed to create a new bucket');
     });
 });
 
@@ -82,16 +81,14 @@ router.route('/api/forge/datamanagement/bucket/detail').get((req, res) => {
             Authorization: 'Bearer ' + access_token
         }
     })
-        .then(function (response) {
-            // Success
-            console.log(response);
-            res.send('Success to verify the new bucket')
-        })
-        .catch(function (error) {
-            // Failed
-            console.log(error);
-            res.send('Failed to verify the new bucket');
-        });
+    .then(response => {
+        // Success
+        res.status(httpResponse.OK).send('Success to verify the new bucket')
+    })
+    .catch(error => {
+        // Failed
+        res.status(httpResponse.Unauthorized).send('Failed to verify the new bucket: ' + error);
+    });
 });
 
 // For converting the source into a Base64-Encoded string
@@ -122,17 +119,15 @@ router.route('/api/forge/datamanagement/bucket/upload').post( upload.single('fil
             maxContentLength: 100000000,
             maxBodyLength: 1000000000
         })
-            .then(function (response) {
-                // Success
-                console.log(response);
-                var urn = response.data.objectId.toBase64();
-                res.redirect('/forgeapi/api/forge/modelderivative/' + urn);
-            })
-            .catch(function (error) {
-                // Failed
-                console.log(error);
-                res.send('Failed to create a new object in the bucket');
-            });
+        .then(response => {
+            // Success
+            var urn = response.data.objectId.toBase64();
+            res.redirect('/forgeapi/api/forge/modelderivative/' + urn);
+        })
+        .catch(error => {
+            // Failed
+            res.status(httpResponse.Unauthorized).send('Failed to create a new object in the bucket');
+        });
     });
 });
 
@@ -169,8 +164,7 @@ router.route('/api/forge/modelderivative/:urn').get((req, res) => {
     })
     .then(function (response) {
         // Success
-        console.log(response);
-        res.json({
+        res.status(httpResponse.OK).json({
             message: 'success',
             urn: urn
         });
@@ -179,8 +173,7 @@ router.route('/api/forge/modelderivative/:urn').get((req, res) => {
     })
     .catch(function (error) {
         // Failed
-        console.log(error);
-        res.send('Error at Model Derivative job.');
+        res.status(httpResponse.InternalServerError).send('Error at Model Derivative job: ' + error);
     });
 });
 

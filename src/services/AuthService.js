@@ -1,7 +1,6 @@
 import CookieService from './CookieService';
 import Firebase from '../Firebase';
 const cookieService = new CookieService();
-const axios = require('axios');
 
 var userInfo = null;
 
