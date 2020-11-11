@@ -1,3 +1,4 @@
+var jwt = require('jsonwebtoken');
 var util = {};
 
 util.objectWithoutProperties = (obj, keys) => {
@@ -20,6 +21,23 @@ util.pushArray = (docRef) => {
         });
 
         resolve(array)
+    })
+}
+
+util.verifyToken = (token) => {
+    const nowdate = new Date();
+    var decoded = jwt.decode(token, {
+        alg: "RS256",
+        typ: "JWT"
+    })
+
+    return nowdate.getTime() < (decoded.exp * 1000);
+}
+
+util.decodeJWT = (token) => {
+    return jwt.decode(token, {
+        alg: "RS256",
+        typ: "JWT"
     })
 }
 

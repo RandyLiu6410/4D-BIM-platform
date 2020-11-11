@@ -55,6 +55,17 @@ router.route('/users').get(async (req, res) => {
 })
 
 router.route('/getuserinfo').get(async (req, res) => {
+    if(!util.verifyToken(req.headers['access_token']))
+    {
+        res.status(httpResponse.Unauthorized).json('token is expired');
+        return;
+    }
+    if(util.decodeJWT(req.headers['access_token']).uid !== req.query.uid)
+    {
+        res.status(httpResponse.Unauthorized).json('Not you');
+        return;
+    }
+
     firestore.collection('users').doc(req.query.uid).get()
     .then(doc => {
         res.status(httpResponse.OK).json(doc.data());
@@ -249,21 +260,23 @@ router.route('/projectmodel/').post(async (req, res) => {
 // To deal with user's token creation
 ///////////////
 
-// router.route('/getusertoken/').get(async (req, res) => {
-//     if(req.query.uid){
-//         admin.auth().createCustomToken(req.query.uid)
-//         .then(customToken => {
-//             // Send token back to client
-//             res.status(httpResponse.OK).send(customToken)
-//         })
-//         .catch(error => {
-//             res.status(httpResponse.Unauthorized).json(error)
-//         });
-//     }
-//     else{
-//         res.status(httpResponse.BadRequest).send('uid cannot be empty.')
-//     }
-// })
+router.route('/getusertoken/').get(async (req, res) => {
+    if(req.query.uid){
+        admin.auth().createCustomToken(req.query.uid)
+        .then(customToken => {
+            // Send token back to client
+            res.status(httpResponse.OK).json({
+                message: customToken
+            })
+        })
+        .catch(error => {
+            res.status(httpResponse.Unauthorized).json(error)
+        });
+    }
+    else{
+        res.status(httpResponse.BadRequest).send('uid cannot be empty.')
+    }
+})
 
 // router.route('/verifyusertoken/').get(async (req, res) => {
 //     admin.auth().verifyIdToken(req.query.token)
