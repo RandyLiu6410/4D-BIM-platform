@@ -10,6 +10,7 @@ import {
   MenuItem
 } from '@material-ui/core';
 import Page from 'src/components/Page';
+import GanttView from '../../gantt/GanttView';
 import Budget from './Budget';
 import LatestOrders from './LatestOrders';
 import LatestProducts from './LatestProducts';
@@ -54,10 +55,10 @@ const Dashboard = (props) => {
 
   useEffect(() => {
     fetchData(props.projectId).then((infos) => {
-      if(infos.data.length > 0)
+      if(infos.data.data.length > 0)
       {
-        setModelInfos(infos.data);
-        setModel(infos.data[0]);
+        setModelInfos(infos.data.data);
+        setModel(infos.data.data[0]);
       }
     })
   }, [modelInfos.length])
@@ -91,21 +92,17 @@ const Dashboard = (props) => {
           </FormControl>
           <Grid
             item
-            lg={3}
-            sm={6}
-            xl={3}
+            md={12}
             xs={12}
           >
             <ModelViewer model={model}/>
           </Grid>
           <Grid
             item
-            lg={3}
-            sm={6}
-            xl={3}
+            md={12}
             xs={12}
           >
-            <img style={{width:"80vw"}} src="/static/images/demo/ganttchart.png"></img>
+            <GanttView />
           </Grid>
           {/* <Grid
             container

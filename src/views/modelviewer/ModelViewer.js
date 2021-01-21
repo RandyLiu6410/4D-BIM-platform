@@ -13,7 +13,6 @@ const useStyles = makeStyles((theme) => ({
       paddingTop: theme.spacing(3)
     },
     forgeviewer: {
-        width: '80vw',
         height: '50vh',
         margin: 0,
         backgroundColor: "#F0F8FF",

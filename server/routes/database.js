@@ -1,78 +1,42 @@
-const { uuid } = require('uuidv4');
-// import config from '/Users/CodeE/Desktop/jacob-team/firebaseConfig.js';
 const router = require('express').Router();
-// Firebase App (the core Firebase SDK) is always required and
-// must be listed before other Firebase SDKs
-var firebase = require("firebase/app");
-
-// Add the Firebase products that you want to use
-require("firebase/auth");
-require("firebase/firestore");
-
-require('dotenv').config()
-
-// Import schema
-const projectSchema = require('../database/models/project');
-const modelSchema = require('../database/models/model');
-const accountSchema = require('../database/models/account');
-
 // utils
+const { uuid } = require('uuidv4');
 var util = require('../utils/util');
 const httpResponse = require('../utils/httpResponse');
 
-// firebase firestore
-var firebaseConfig = require(process.env.firebaseconfig_PATH);
-
-firebase.initializeApp(firebaseConfig);
-
-const firestore = firebase.firestore();
-
-// firebase admin
-var admin = require("firebase-admin");
-
-var serviceAccount = require(process.env.firebaseadminkey_PATH);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://jacob-4d-bim-platform.firebaseio.com"
-});
+var databaseController = require('../controllers/databaseController');
+var authController = require('../controllers/authController');
 
 ///////////////
 // To deal with users
 ///////////////
 
-router.route('/users').get(async (req, res) => {
-    firestore.collection('users').get()
-    .then(docRef => {
-        util.pushArray(docRef)
-        .then(u => {
-            res.status(httpResponse.OK).json(u);
-        })
-    })
-    .catch(err => {
-        res.status(httpResponse.NotFound).json(err);
-    })
+router.route('/users').get(util.verifyToken, authController.checkAdmin, async (req, res) => {
+    var param = {};
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.OK).json({"status": "fail","message": result});
+	};
+    databaseController.getAllUsers(param);
 })
 
-router.route('/getuserinfo').get(async (req, res) => {
-    if(!util.verifyToken(req.headers['access_token']))
-    {
-        res.status(httpResponse.Unauthorized).json('token is expired');
-        return;
-    }
-    if(util.decodeJWT(req.headers['access_token']).uid !== req.query.uid)
-    {
-        res.status(httpResponse.Unauthorized).json('Not you');
+router.route('/getuserinfo').get(util.verifyToken, async (req, res) => {
+    if(!req.query.uid){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
         return;
     }
 
-    firestore.collection('users').doc(req.query.uid).get()
-    .then(doc => {
-        res.status(httpResponse.OK).json(doc.data());
-    })
-    .catch(err => {
-        res.status(httpResponse.NotFound).json(err);
-    })
+    var param = {};
+    param.uid = req.query.uid;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.NotFound).json({"status": "fail","message": result});
+	};
+    databaseController.getUserInfo(param);
 })
 
 ///////////////
@@ -80,180 +44,139 @@ router.route('/getuserinfo').get(async (req, res) => {
 ///////////////
 
 // Get all projects
-router.route('/').get(async (req, res) => {
-    firestore.collection('projects').get()
-    .then(docRef => {
-        util.pushArray(docRef)
-        .then(p => {
-            res.status(httpResponse.OK).json(p);
-        })
-    })
-    .catch(err => {
-        res.status(httpResponse.NotFound).json(err);
-    })
+router.route('/').get(util.verifyToken, authController.checkAdmin, async (req, res) => {
+    var param = {};
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.NotFound).json({"status": "fail","message": result});
+	};
+    databaseController.getAllProjects(param);
 })
 
 // Get project info
-router.route('/getprojectinfo').get(async (req, res) => {
-    firestore.collection('projects').doc(req.query.projectId).get()
-    .then(doc => {
-        res.status(httpResponse.OK).json(doc.data());
-    })
-    .catch(err => {
-        res.status(httpResponse.NotFound).json(err);
-    })
+router.route('/getprojectinfo').get(util.verifyToken, async (req, res) => {
+    if(!req.query.projectId){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
+    }
+
+    var param = {};
+    param.uid = util.decodeJWT(req.headers['access_token']).uid;
+    param.projectId = req.query.projectId;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.NotFound).json({"status": "fail","message": result});
+	};
+    databaseController.getProjectInfo(param);
 })
 
 // Get projects of user
-router.route('/getuserprojects').get(async (req, res) => {
-    firestore.collection('users').doc(req.query.uid).get()
-    .then(docRef => {
-        res.status(httpResponse.OK).json(docRef.data().projects);
-    })
-    .catch(err => {
-        res.status(httpResponse.NotFound).json(err)
-    })
+router.route('/getuserprojects').get(util.verifyToken, util.checkDataOwner, async (req, res) => {
+    if(!req.query.uid){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
+    }
+
+    var param = {};
+    param.uid = req.query.uid;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.NotFound).json({"status": "fail","message": result});
+	};
+    databaseController.getProjectsByUser(param);
 })
 
 // Add a project to user
-router.route('/adduserproject').post(async (req, res) => {
-    // Modify user doc
-    if(req.query.uid && req.query.projectId){
-        const docRef = firestore.collection('users').doc(req.query.uid)
-        docRef.update({
-            projects: firebase.firestore.FieldValue.arrayUnion(req.query.projectId)
-        })
-        .then(() => {
-            res.status(httpResponse.Created).json({
-                message: `Add project ${req.query.projectId} to user ${req.query.uid} successfully.`,
-                status: 1,
-                details: req.query
-            })
-        })
-        .catch(err => {
-            res.status(httpResponse.ServiceUnavailable).json({
-                message: `Failed to add project ${req.query.projectId} to user ${req.query.uid}.`,
-                status: 0,
-                details: {
-                    message: err
-                }
-            })
-        })
+router.route('/adduserproject').post(util.verifyToken, async (req, res) => {
+    if(!req.query.uid || !req.query.projectId){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
     }
-    else{
-        res.status(httpResponse.BadRequest).send('uid and projectId cannot be empty.')
-    }
+
+    var param = {};
+    param.senderUid = util.decodeJWT(req.headers['access_token']).uid;
+    param.uid = req.query.uid;
+    param.projectId = req.query.projectId;
+	param.succFunc = function(result){
+		res.status(httpResponse.Created).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.ServiceUnavailable).json({"status": "fail","message": result});
+	};
+    databaseController.addProjectToUser(param);
 })
 
 // Add a project
-router.route('/project').post(async (req, res) => {
-    try {
-        const _value = {
-            id: uuid(),
-            name: req.query.name,
-            location: {
-                country: req.query.country,
-                city: req.query.city,
-                street: req.query.street
-            },
-            manager: req.query.manager,
-            createdAt: (new Date()).getTime(),
-            models: []
-        }
-        console.log(_value)
-        const value = await projectSchema.validateAsync(_value);
-
-        firestore.collection('projects').doc(value.id).set(value)
-        .then(() => {
-            res.status(httpResponse.Created).json({
-                message: "Add a project successfully.",
-                status: 1,
-                details: value
-            })
-        })
-        .catch(err => {
-            res.status(httpResponse.ServiceUnavailable).json({
-                message: "Failed to add a project.",
-                status: 0,
-                details: {
-                    message: err
-                }
-            })
-        })
+router.route('/project').post(util.verifyToken, async (req, res) => {
+    var param = {};
+    param.value = {
+        id: uuid(),
+        name: req.query.name,
+        location: {
+            country: req.query.country,
+            city: req.query.city,
+            street: req.query.street
+        },
+        manager: req.query.manager,
+        creator: util.decodeJWT(req.headers['access_token']).uid,
+        createdAt: (new Date()).getTime(),
+        models: []
     }
-    catch (err) {
-        res.status(httpResponse.BadRequest).json({
-            message: "Failed to add a project.",
-            status: 0,
-            details: {
-                message: err.details
-            }
-        })
-    }
-})
-
-router.route('/projectmodel/').get(async (req, res) => {
-    if(req.query.projectId)
-    {
-        firestore.collection('projects').doc(req.query.projectId).collection('models').get()
-        .then(docRef => {
-            util.pushArray(docRef)
-            .then(m => {
-                res.status(httpResponse.OK).json(m);
-            })
-        })
-        .then(err => {
-            res.status(httpResponse.ServiceUnavailable).json(err);
-        })
-    }
-    else
-    {
-        res.status(httpResponse.BadRequest).send('projectId cannot be empty')
-    }
+	param.succFunc = function(result){
+		res.status(httpResponse.Created).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.BadRequest).json({"status": "fail","message": result});
+	};
+    databaseController.createProject(param);
 })
 
 // Add a model
-router.route('/projectmodel/').post(async (req, res) => {
-    try {
-        const value = await modelSchema.validateAsync({
-            ...util.objectWithoutProperties(req.query, "projectId"),
-            id: uuid(),
-            createdAt: (new Date()).getTime()
-        });
+router.route('/projectmodel/').post(util.verifyToken, async (req, res) => {
+    if(!req.query.projectId){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
+    }
 
-        // Add model doc
-        firestore.collection('projects').doc(req.query.projectId).collection('models').doc(value.id).set(value)
-        .then(() => {
-            // Modify project doc
-            firestore.collection('projects').doc(req.query.projectId).update({
-                models: firebase.firestore.FieldValue.arrayUnion(value.id)
-            })
-            .then(() => {
-                res.status(httpResponse.Created).json({
-                    message: `Add a model to project ${req.query.projectId} successfully.`,
-                    status: 1,
-                    details: {
-                        message: value
-                    }
-                })
-            })
-            .then(err => {
-                res.status(httpResponse.ServiceUnavailable).json(err);
-            })
-        })
-        .catch(err => {
-            res.status(httpResponse.ServiceUnavailable).json(err);
-        })
+    var param = {};
+    param.senderUid = util.decodeJWT(req.headers['access_token']).uid;
+    param.projectId = req.query.projectId;
+    param.value = {
+        ...util.objectWithoutProperties(req.query, "projectId"),
+        id: uuid(),
+        createdAt: (new Date()).getTime()
     }
-    catch (err) {
-        res.status(httpResponse.BadRequest).json({
-            message: `Failed to add a model to project ${req.query.projectId}.`,
-            status: 0,
-            details: {
-                message: err.details
-            }
-        })
+	param.succFunc = function(result){
+		res.status(httpResponse.Created).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.BadRequest).json({"status": "fail","message": result});
+	};
+    databaseController.addModel(param);
+})
+
+// Get model info
+router.route('/projectmodel/').get(util.verifyToken, async (req, res) => {
+    if(!req.query.projectId){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
     }
+
+    var param = {};
+    param.projectId = req.query.projectId;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.NotFound).json({"status": "fail","message": result});
+	};
+    databaseController.getProjectModel(param);
 })
 
 ///////////////
@@ -261,38 +184,44 @@ router.route('/projectmodel/').post(async (req, res) => {
 ///////////////
 
 router.route('/getusertoken/').get(async (req, res) => {
-    if(req.query.uid){
-        admin.auth().createCustomToken(req.query.uid)
-        .then(customToken => {
-            // Send token back to client
-            res.status(httpResponse.OK).json({
-                message: customToken
-            })
-        })
-        .catch(error => {
-            res.status(httpResponse.Unauthorized).json(error)
-        });
+    if(!req.query.uid){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
     }
-    else{
-        res.status(httpResponse.BadRequest).send('uid cannot be empty.')
-    }
+
+    var param = {};
+    param.uid = req.query.uid;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.Unauthorized).json({"status": "fail","message": result});
+	};
+    authController.getUserToken(param);
 })
 
-// router.route('/verifyusertoken/').get(async (req, res) => {
-//     admin.auth().verifyIdToken(req.query.token)
-//     .then(function(decodedToken) {
-//         let uid = decodedToken.uid;
-//         // ...
-//         res.json({
-//             uid: uid
-//         })
-//     }).catch(function(error) {
-//         // Handle error
-//         res.json({
-//             error: error
-//         })
-//     });
-// })
+
+// ************* Dangerous ****************
+router.route('/setadmin/').get(async (req, res) => {
+    if(!req.query.uid){
+        res.status(httpResponse.BadRequest).send('variables cannot be empty.');
+        return;
+    }
+
+    var param = {};
+    param.uid = req.query.uid;
+	param.succFunc = function(result){
+		res.status(httpResponse.OK).json({"status":"ok","data": result});
+	};
+	param.failFunc = function(result){
+		res.status(httpResponse.Unauthorized).json({"status": "fail","message": result});
+	};
+    authController.setAdmin(param);
+})
+
+router.route('/verifyusertoken/').get(authController.verifyToken, async (req, res) => {
+    res.json('sss')
+})
 
 // router.route('/getuserbyemail/').get(async (req, res) => {
 //     const query = await firestore.collection('users').where('email', '==', req.query.email)

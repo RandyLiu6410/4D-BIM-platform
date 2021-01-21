@@ -6,6 +6,9 @@ const projectSchema = Joi.object({
 
     manager: Joi.string()
         .required(),
+
+    creator: Joi.string()
+        .required(),
     
     name: Joi.string()
         .required(),

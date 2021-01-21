@@ -96,8 +96,6 @@ const LoginView = (props) => {
           }
         })
         .then(function (responce) {
-          console.log(responce);
-
           window.localStorage.setItem('userInfo', JSON.stringify({
             displayName: result.user.displayName,
             email: result.user.email,
@@ -107,7 +105,7 @@ const LoginView = (props) => {
             refreshToken: result.user.refreshToken,
             uid: result.user.uid
           }));
-          cookieService.set('access_token', responce.data.message, { path: '/' });
+          cookieService.set('access_token', responce.data.data, { path: '/' });
 
           navigate('/', { replace: true });
         })
@@ -173,7 +171,7 @@ const LoginView = (props) => {
                       refreshToken: result.user.refreshToken,
                       uid: result.user.uid
                     }));
-                    cookieService.set('access_token', responce.data.message, { path: '/' });
+                    cookieService.set('access_token', responce.data.data, { path: '/' });
                     navigate('/', { replace: true });
                   })
                   .catch(function (error) {

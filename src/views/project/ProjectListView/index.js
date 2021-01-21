@@ -11,7 +11,7 @@ const fetchData = (userInfo) => {
         uid: userInfo.uid
       }
     })
-    const infos = await Promise.all(userprojects.data.map(async (id) => {
+    const infos = await Promise.all(userprojects.data.data.map(async (id) => {
       const info = await databaseAPI.get('/getprojectinfo', {
         params: {
           projectId: id
@@ -19,14 +19,15 @@ const fetchData = (userInfo) => {
       })
       return info;
     }))
+    console.log(infos)
     const _infos = await Promise.all(infos.map(async (info) => {
-      var data = info.data;
+      var data = info.data.data;
       const userinfo = await databaseAPI.get('/getuserinfo', {
         params: {
           uid: data.manager
         }
       });
-      data.managerName = userinfo.data.name.firstName + ' ' + userinfo.data.name.lastName;
+      data.managerName = userinfo.data.data.name.firstName + ' ' + userinfo.data.data.name.lastName;
       return data;
     }))
     resolve(_infos);
